@@ -164,14 +164,13 @@
     transition:transform .2s ease;
   }
   .chip.active{border-color:var(--ink); transform:scale(1.12)}
-  .chip.picker{
+  input.chip.picker{
+    -webkit-appearance:none; appearance:none;
     background:conic-gradient(from 0deg, #e63946, #f4a52a, #f6e04a, #4ac97a, #3f6fee, #8a4fd9, #e63946) !important;
-    position:relative;
+    padding:0;
   }
-  .chip.picker::after{
-    content:"+"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    color:#fff; font-size:15px; font-weight:700; text-shadow:0 1px 3px rgba(0,0,0,.6);
-  }
+  input.chip.picker::-webkit-color-swatch-wrapper{padding:0}
+  input.chip.picker::-webkit-color-swatch{border:none; border-radius:50%}
   .minirow{
     display:flex; align-items:center; gap:12px; margin-top:10px;
     font-size:10px; letter-spacing:.15em; color:var(--sub);
@@ -326,7 +325,6 @@
     <div class="tab" data-t="colors">カラー</div>
     <div class="tab" data-t="tune">質感</div>
     <div class="tab" data-t="hikari">光</div>
-    <div class="tab" data-t="care">ケア</div>
   </div>
 
   <div class="tray active" id="tray-looks">
@@ -379,20 +377,10 @@
     <div class="swatchrow" id="trailSwatches"></div>
     <p class="hikari-desc">手を動かすたび、爪の色に呼応した光がやわらかく尾を引きます。手を止めると静かに消えていきます。</p>
   </div>
-
-  <div class="tray" id="tray-care">
-    <div class="toggle-row">
-      <span>色を塗らず地爪をきれいに見せる</span>
-      <div class="switch" id="careSwitch"></div>
-    </div>
-    <div class="minirow">補正の強さ <input type="range" id="careIntensity" min="0" max="100" value="60"></div>
-    <p class="hikari-desc">デザインやカラーは重ねず、素の爪と手の色艶を自然に引き立てます。オンの間はデザイン・カラーの選択は反映されません。</p>
-  </div>
 </div>
 
 <input type="file" id="inspoInput" accept="image/*">
 <input type="file" id="designInput" accept="image/*">
-<input type="color" id="colorPicker" value="#101113" style="position:absolute; opacity:0; pointer-events:none; width:1px; height:1px;">
 <video id="video" playsinline style="display:none"></video>
 
 <!-- お絵かきエディタ -->
@@ -427,11 +415,6 @@ let currentLook = 'onecolor';
 let smoothed = [];
 let rafOn = false;
 const tuneVals = { gloss:65, opacity:96, nailSize:100 };
-let careOn = false, careIntensity = 60;
-function careFilterString(){
-  const t = careIntensity/100;
-  return `brightness(${1+0.10*t}) saturate(${1+0.22*t}) contrast(${1+0.06*t})`;
-}
 const $ = id => document.getElementById(id);
 
 function setStatus(t){ $('status').textContent = t || ''; }
@@ -453,7 +436,7 @@ function makeHands(opts){
 function ensureLive(){
   if(window.__mpFailed) return Promise.reject(new Error('cdn'));
   if(!liveReady){
-    liveHands = makeHands({maxNumHands:2, modelComplexity:0, minDetectionConfidence:0.6, minTrackingConfidence:0.6});
+    liveHands = makeHands({maxNumHands:2, modelComplexity:1, minDetectionConfidence:0.6, minTrackingConfidence:0.6});
     liveHands.onResults(res => {
       const lms = res.multiHandLandmarks || [];
       if(lms.length){ lastSeenT = performance.now(); updateLandmarks(lms); }
@@ -481,7 +464,7 @@ function updateLandmarks(lms){
         if(Math.abs(d) < 0.0022){ s[v]*=0.5; return; }
         const dv = d/dt;
         s[v] += alphaFor(1.0, dt)*(dv - s[v]);
-        const cutoff = 1.2 + 40*Math.abs(s[v]);
+        const cutoff = 1.0 + 25*Math.abs(s[v]);
         s[ax] += alphaFor(cutoff, dt)*d;
       });
     });
@@ -535,9 +518,7 @@ function startLoops(){
     if(mode === 'live' && video.readyState >= 2){
       ctx.save();
       if(mirrored()){ ctx.translate(canvas.width,0); ctx.scale(-1,1); }
-      ctx.filter = careOn ? careFilterString() : 'none';
       ctx.drawImage(video,0,0,canvas.width,canvas.height);
-      ctx.filter = 'none';
       ctx.restore();
       recordTrails();
       drawTrails(dt);
@@ -605,11 +586,8 @@ async function loadImage(file){
 const FINGERS = [[4,3],[8,7],[12,11],[16,15],[20,19]];
 const nailState = [];
 function mirrored(){ return facing==='user'; }
-const PREDICT_S = 0.08; // 映像は即時、検出結果はこの位置遅れて届くので速度から先読みして補う
 function lmXY(p){
-  const px = p.x + (p.vx||0)*PREDICT_S;
-  const py = p.y + (p.vy||0)*PREDICT_S;
-  let x = px*canvas.width, y = py*canvas.height;
+  let x = p.x*canvas.width, y = p.y*canvas.height;
   if(mirrored()) x = canvas.width - x;
   return [x,y];
 }
@@ -625,9 +603,9 @@ function drawNails(){
       const rawAng = Math.atan2(ty-dy,tx-dx);
       const st = nailState[hi*5+fi] || (nailState[hi*5+fi] = {len:rawLen, ang:rawAng});
       const dLen = rawLen - st.len;
-      if(Math.abs(dLen) > st.len*0.035) st.len += dLen*Math.min(1, 0.35 + Math.abs(dLen)/st.len*1.6);
+      if(Math.abs(dLen) > st.len*0.035) st.len += dLen*Math.min(1, 0.12 + Math.abs(dLen)/st.len);
       let dAng = ((rawAng - st.ang + Math.PI*3) % (Math.PI*2)) - Math.PI;
-      if(Math.abs(dAng) > 0.035) st.ang += dAng*Math.min(1, 0.4 + Math.abs(dAng)*3);
+      if(Math.abs(dAng) > 0.035) st.ang += dAng*Math.min(1, 0.15 + Math.abs(dAng)*2);
       const len = st.len, ang = st.ang;
       const w = len*0.54*scale, h = len*0.94*scale;
       ctx.save();
@@ -636,32 +614,26 @@ function drawNails(){
       nailPath(w,h);
       ctx.clip();
       ctx.globalAlpha = alpha;
-      if(!careOn){
-        paintLook(ctx,w,h,currentColor,hi*5+fi);
-        if(gloss < 0.5){
-          // マット寄りの質感ほど、デザイン自体が持つツヤ由来のグラデーションも上から均して消す
-          const flat = Math.max(0, 1 - gloss*2);
-          ctx.globalAlpha = alpha*flat*0.6;
-          ctx.fillStyle = shade(currentColor,-6);
-          ctx.fillRect(-w,-h,w*2,h*2);
-        }
+      paintLook(ctx,w,h,currentColor,hi*5+fi);
+      if(gloss < 0.5){
+        // マット寄りの質感ほど、デザイン自体が持つツヤ由来のグラデーションも上から均して消す
+        const flat = Math.max(0, 1 - gloss*2);
+        ctx.globalAlpha = alpha*flat*0.6;
+        ctx.fillStyle = shade(currentColor,-6);
+        ctx.fillRect(-w,-h,w*2,h*2);
       }
-      // ケア中は色を塗らず、映像側の補正(careFilterString)で実際の爪の色艶を活かす。
-      // ここではツヤの見せ方(ハイライト・縁の陰影)だけを重ねる。
-      const careT = careIntensity/100;
-      ctx.globalAlpha = (careOn ? careT : alpha) * 0.3;
+      ctx.globalAlpha = alpha*0.3;
       const rim = ctx.createRadialGradient(0,0,Math.min(w,h)*0.35, 0,0,Math.max(w,h)*0.75);
       rim.addColorStop(0,'rgba(0,0,0,0)');
-      rim.addColorStop(1, careOn ? 'rgba(20,18,16,.35)' : 'rgba(30,30,28,.5)');
+      rim.addColorStop(1,'rgba(30,30,28,.5)');
       ctx.fillStyle=rim; ctx.fillRect(-w,-h,w*2,h*2);
-      const glossEff = careOn ? careT : gloss;
-      if(glossEff>0.05){
-        ctx.globalAlpha = (careOn ? careT : alpha) * glossEff*0.6;
+      if(gloss>0.05){
+        ctx.globalAlpha = alpha*gloss*0.6;
         ctx.fillStyle='#fff';
         ctx.beginPath();
         ctx.ellipse(-w*0.18,-h*0.20,w*0.15,h*0.26,-0.3,0,Math.PI*2);
         ctx.fill();
-        ctx.globalAlpha = (careOn ? careT : alpha) * glossEff*0.28;
+        ctx.globalAlpha = alpha*gloss*0.28;
         ctx.beginPath();
         ctx.ellipse(w*0.2,h*0.05,w*0.09,h*0.15,0.2,0,Math.PI*2);
         ctx.fill();
@@ -758,13 +730,6 @@ $('trailSwitch').onclick = ()=>{
   if(!trailOn) trails.length = 0;
 };
 $('trailIntensity').addEventListener('input', e=>{ trailIntensity = +e.target.value; });
-
-/* ================= ケア（色を塗らず地爪・肌の色艶を補正） ================= */
-$('careSwitch').onclick = ()=>{
-  careOn = !careOn;
-  $('careSwitch').classList.toggle('on', careOn);
-};
-$('careIntensity').addEventListener('input', e=>{ careIntensity = +e.target.value; });
 
 /* ================= デザイン12種 ================= */
 function seeded(seed){ let s=seed*9301+49297; return ()=>{ s=(s*9301+49297)%233280; return s/233280; }; }
@@ -1075,19 +1040,21 @@ function renderChips(pal){
     box.appendChild(el);
     if(i===0) currentColor=col;
   });
-  const picker=document.createElement('div');
+  const picker=document.createElement('input');
+  picker.type='color';
+  picker.id='colorPicker';
   picker.className='chip picker';
   picker.title='好きな色を選ぶ';
-  picker.onclick=()=>$('colorPicker').click();
+  picker.value=currentColor;
+  picker.addEventListener('input', e=>{
+    currentColor = e.target.value;
+    box.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+    picker.classList.add('active');
+    refreshThumbs();
+  });
   box.appendChild(picker);
   refreshThumbs();
 }
-$('colorPicker').addEventListener('input', e=>{
-  currentColor = e.target.value;
-  $('chips').querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
-  $('chips').querySelector('.picker').classList.add('active');
-  refreshThumbs();
-});
 $('inspoInput').addEventListener('change', async e=>{
   const file=e.target.files[0]; if(!file) return;
   const img=await loadImage(file);
