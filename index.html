@@ -578,8 +578,11 @@ async function loadImage(file){
 const FINGERS = [[4,3],[8,7],[12,11],[16,15],[20,19]];
 const nailState = [];
 function mirrored(){ return facing==='user'; }
+const PREDICT_S = 0.08; // 映像は即時、検出結果はこの位置遅れて届くので速度から先読みして補う
 function lmXY(p){
-  let x = p.x*canvas.width, y = p.y*canvas.height;
+  const px = p.x + (p.vx||0)*PREDICT_S;
+  const py = p.y + (p.vy||0)*PREDICT_S;
+  let x = px*canvas.width, y = py*canvas.height;
   if(mirrored()) x = canvas.width - x;
   return [x,y];
 }
