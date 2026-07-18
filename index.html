@@ -164,6 +164,14 @@
     transition:transform .2s ease;
   }
   .chip.active{border-color:var(--ink); transform:scale(1.12)}
+  .chip.picker{
+    background:conic-gradient(from 0deg, #e63946, #f4a52a, #f6e04a, #4ac97a, #3f6fee, #8a4fd9, #e63946) !important;
+    position:relative;
+  }
+  .chip.picker::after{
+    content:"+"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:15px; font-weight:700; text-shadow:0 1px 3px rgba(0,0,0,.6);
+  }
   .minirow{
     display:flex; align-items:center; gap:12px; margin-top:10px;
     font-size:10px; letter-spacing:.15em; color:var(--sub);
@@ -328,6 +336,7 @@
     <div class="scroller" id="chips"></div>
     <div class="minirow">
       <span class="ghostlink" onclick="document.getElementById('inspoInput').click()">写真</span>
+      <span class="ghostlink" onclick="document.getElementById('colorPicker').click()">好きな色を選ぶ</span>
     </div>
     <div id="note"></div>
   </div>
@@ -373,6 +382,7 @@
 
 <input type="file" id="inspoInput" accept="image/*">
 <input type="file" id="designInput" accept="image/*">
+<input type="color" id="colorPicker" value="#101113" style="position:absolute; opacity:0; pointer-events:none; width:1px; height:1px;">
 <video id="video" playsinline style="display:none"></video>
 
 <!-- お絵かきエディタ -->
@@ -610,6 +620,13 @@ function drawNails(){
       ctx.clip();
       ctx.globalAlpha = alpha;
       paintLook(ctx,w,h,currentColor,hi*5+fi);
+      if(gloss < 0.5){
+        // マット寄りの質感ほど、デザイン自体が持つツヤ由来のグラデーションも上から均して消す
+        const flat = Math.max(0, 1 - gloss*2);
+        ctx.globalAlpha = alpha*flat*0.6;
+        ctx.fillStyle = shade(currentColor,-6);
+        ctx.fillRect(-w,-h,w*2,h*2);
+      }
       ctx.globalAlpha = alpha*0.3;
       const rim = ctx.createRadialGradient(0,0,Math.min(w,h)*0.35, 0,0,Math.max(w,h)*0.75);
       rim.addColorStop(0,'rgba(0,0,0,0)');
@@ -738,29 +755,8 @@ function heart(c,x,y,s){
   c.bezierCurveTo(0.45,-1.2,1.1,-0.5,0,0.35);
   c.closePath(); c.fill(); c.restore();
 }
-function flower(c,x,y,r,col){
-  c.fillStyle=col;
-  for(let i=0;i<5;i++){
-    const a=i*Math.PI*2/5 - Math.PI/2;
-    c.beginPath();
-    c.ellipse(x+Math.cos(a)*r*0.72, y+Math.sin(a)*r*0.72, r*0.5, r*0.36, a, 0, Math.PI*2);
-    c.fill();
-  }
-  c.fillStyle='#f3d98b';
-  c.beginPath(); c.arc(x,y,r*0.3,0,Math.PI*2); c.fill();
-}
 const LOOKS = {
   onecolor:{name:'ワンカラー', paint(c,w,h,col){ base(c,w,h,shade(col,18),shade(col,-14)); }},
-  churun:{name:'ちゅるん', paint(c,w,h,col){
-    nudeBase(c,w,h,.5);
-    const keep=c.globalAlpha; c.globalAlpha=keep*.72;
-    base(c,w,h,shade(col,30),shade(col,-2));
-    c.globalAlpha=keep*.5;
-    const g=c.createRadialGradient(0,h*0.05,0, 0,h*0.05,w*0.75);
-    g.addColorStop(0,shade(col,-10)); g.addColorStop(1,'rgba(255,255,255,0)');
-    c.fillStyle=g; c.fillRect(-w/2,-h/2,w,h*1.2);
-    c.globalAlpha=keep;
-  }},
   mizuhikari:{name:'水光マグネット', paint(c,w,h,col,seed){
     base(c,w,h,shade(col,-18),shade(col,-38));
     const g=c.createLinearGradient(-w*0.45,h*0.35,w*0.45,-h*0.45);
@@ -795,7 +791,7 @@ const LOOKS = {
     c.fillStyle='rgba(255,255,255,.55)';
     c.fillRect(-w*0.06,-h/2,w*0.05,h*1.2);
   }},
-  matte:{name:'マットブラック', paint(c,w,h,col,seed){
+  matte:{name:'マット', paint(c,w,h,col,seed){
     base(c,w,h,shade(col,-4),shade(col,-26));
     const rnd=seeded(seed+53);
     for(let i=0;i<70;i++){
@@ -861,29 +857,6 @@ const LOOKS = {
     g.addColorStop(1,shade(col,-10));
     c.fillStyle=g; c.fillRect(-w/2,-h/2,w,h*1.2);
   }},
-  flower:{name:'フラワー', paint(c,w,h,col,seed){
-    base(c,w,h,'#fdf7f1','#f2e4d9');
-    const rnd=seeded(seed+17);
-    flower(c, -w*0.16, -h*0.05, w*0.22, shade(col,10));
-    flower(c, w*0.2, h*0.24, w*0.15, shade(col,35));
-    c.fillStyle=hexA(shade(col,-15),.8);
-    for(let i=0;i<4;i++){
-      c.beginPath();
-      c.arc((rnd()-0.5)*w*0.9,(rnd()-0.5)*h*0.9,w*0.02,0,Math.PI*2); c.fill();
-    }
-  }},
-  dot:{name:'レトロドット', paint(c,w,h,col){
-    base(c,w,h,'#fbf3ea','#f1e2d5');
-    c.fillStyle=shade(col,0);
-    const r=w*0.085;
-    for(let row=0;row<4;row++){
-      for(let k=0;k<3;k++){
-        const x=(k-1)*w*0.32 + (row%2? w*0.16:0);
-        const y=(row-1.5)*h*0.26;
-        c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fill();
-      }
-    }
-  }},
   aurora:{name:'オーロラ', paint(c,w,h,col){
     nudeBase(c,w,h,.55);
     const keep=c.globalAlpha;
@@ -894,12 +867,6 @@ const LOOKS = {
       g.addColorStop(0,vc); g.addColorStop(1,'rgba(255,255,255,0)');
       c.fillStyle=g; c.fillRect(-w/2,-h/2,w,h*1.2);
     });
-    c.globalAlpha=keep;
-  }},
-  milk:{name:'ミルキー', paint(c,w,h,col){
-    base(c,w,h,'#fdf8f3','#f4e6dc');
-    const keep=c.globalAlpha; c.globalAlpha=keep*.45;
-    base(c,w,h,shade(col,50),shade(col,22));
     c.globalAlpha=keep;
   }},
 };
@@ -979,10 +946,9 @@ function buildLooks(){
 }
 /* サムネイルは選択中の色に関係なく、デザインごとの見本カラーで塗る（一覧が単色に潰れないように） */
 const SHOWCASE = {
-  onecolor:'#b3271e', churun:'#c9a227', mizuhikari:'#3f6fee', flash:'#7a1f2b',
+  onecolor:'#b3271e', mizuhikari:'#3f6fee', flash:'#7a1f2b',
   chrome:'#8a8f96', matte:'#101113', microart:'#e8e6df', geometric:'#3c3f45',
-  wanghong:'#c9a227', french:'#e8e6df', grad:'#3f6fee', flower:'#7a1f2b',
-  dot:'#0f3d3a', aurora:'#c9a227', milk:'#d4a017',
+  wanghong:'#c9a227', french:'#e8e6df', grad:'#3f6fee', aurora:'#c9a227',
 };
 function refreshThumbs(){
   const row=$('looksRow');
@@ -1079,8 +1045,19 @@ function renderChips(pal){
     box.appendChild(el);
     if(i===0) currentColor=col;
   });
+  const picker=document.createElement('div');
+  picker.className='chip picker';
+  picker.title='好きな色を選ぶ';
+  picker.onclick=()=>$('colorPicker').click();
+  box.appendChild(picker);
   refreshThumbs();
 }
+$('colorPicker').addEventListener('input', e=>{
+  currentColor = e.target.value;
+  $('chips').querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+  $('chips').querySelector('.picker').classList.add('active');
+  refreshThumbs();
+});
 $('inspoInput').addEventListener('change', async e=>{
   const file=e.target.files[0]; if(!file) return;
   const img=await loadImage(file);
