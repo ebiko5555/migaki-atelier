@@ -792,50 +792,43 @@ const LOOKS = {
     c.fillStyle='rgba(255,255,255,.55)';
     c.fillRect(-w*0.06,-h/2,w*0.05,h*1.2);
   }},
-  skull:{name:'スカル', paint(c,w,h,col){
-    base(c,w,h,shade(col,-8),shade(col,-42));
-    c.fillStyle='rgba(244,242,236,.96)';
-    c.beginPath(); c.ellipse(0,-h*0.08,w*0.30,h*0.24,0,0,Math.PI*2); c.fill();
-    c.beginPath();
-    c.moveTo(-w*0.22,h*0.02);
-    c.quadraticCurveTo(0,h*0.24,w*0.22,h*0.02);
-    c.quadraticCurveTo(w*0.15,h*0.15,0,h*0.17);
-    c.quadraticCurveTo(-w*0.15,h*0.15,-w*0.22,h*0.02);
-    c.fill();
-    c.fillStyle=shade(col,-48);
-    c.beginPath(); c.ellipse(-w*0.115,-h*0.09,w*0.075,h*0.09,0,0,Math.PI*2); c.fill();
-    c.beginPath(); c.ellipse(w*0.115,-h*0.09,w*0.075,h*0.09,0,0,Math.PI*2); c.fill();
-    c.beginPath();
-    c.moveTo(0,-h*0.02); c.lineTo(-w*0.035,h*0.035); c.lineTo(w*0.035,h*0.035);
-    c.closePath(); c.fill();
-    c.strokeStyle=shade(col,-48); c.lineWidth=Math.max(1,w*0.014);
-    for(let i=-2;i<=2;i++){
-      c.beginPath(); c.moveTo(i*w*0.045,h*0.055); c.lineTo(i*w*0.045,h*0.14); c.stroke();
+  matte:{name:'マットブラック', paint(c,w,h,col,seed){
+    base(c,w,h,shade(col,-4),shade(col,-26));
+    const rnd=seeded(seed+53);
+    for(let i=0;i<70;i++){
+      const x=(rnd()-0.5)*w, y=(rnd()-0.5)*h*1.1;
+      c.fillStyle = rnd()>0.5 ? 'rgba(0,0,0,.07)' : 'rgba(255,255,255,.05)';
+      c.beginPath(); c.arc(x,y,w*0.02+rnd()*w*0.015,0,Math.PI*2); c.fill();
     }
   }},
-  chromeheart:{name:'クロムハート', paint(c,w,h,col,seed){
-    base(c,w,h,shade(col,-30),shade(col,-50));
-    const g=c.createLinearGradient(-w*0.3,-h*0.3,w*0.3,h*0.3);
-    g.addColorStop(0,'rgba(255,255,255,.95)');
-    g.addColorStop(.3,hexA(shade(col,100),.9));
-    g.addColorStop(.55,'rgba(222,222,228,.85)');
-    g.addColorStop(.8,hexA(shade(col,30),.9));
-    g.addColorStop(1,'rgba(255,255,255,.9)');
-    c.fillStyle=g;
-    heart(c,0,-h*0.03,w*0.34);
-    c.strokeStyle='rgba(18,18,20,.55)';
-    c.lineWidth=Math.max(1,w*0.03);
+  microart:{name:'マイクロアート', paint(c,w,h,col){
+    base(c,w,h,'#f1e8df','#e6d6c8');
+    const keep=c.globalAlpha; c.globalAlpha=keep*0.18;
+    base(c,w,h,shade(col,20),shade(col,-10));
+    c.globalAlpha=keep;
+    c.fillStyle='rgba(24,21,18,.88)';
+    c.save(); c.translate(w*0.12,h*0.14); c.scale(w*0.15,w*0.15);
     c.beginPath();
-    c.moveTo(0,-h*0.24); c.lineTo(0,h*0.10);
-    c.moveTo(-w*0.14,-h*0.06); c.lineTo(w*0.14,-h*0.06);
+    c.moveTo(0,0.55);
+    c.bezierCurveTo(-0.5,0.15,-0.35,-0.35,0.05,-0.6);
+    c.bezierCurveTo(-0.05,-0.25,0.2,-0.15,0.22,0.05);
+    c.bezierCurveTo(0.35,-0.05,0.32,-0.3,0.2,-0.5);
+    c.bezierCurveTo(0.55,-0.25,0.5,0.25,0,0.55);
+    c.closePath(); c.fill();
+    c.restore();
+  }},
+  geometric:{name:'ジオメトリック', paint(c,w,h,col,seed){
+    base(c,w,h,shade(col,-6),shade(col,-30));
+    c.strokeStyle='rgba(255,255,255,.55)';
+    c.lineWidth=Math.max(1,w*0.018);
+    c.beginPath();
+    c.moveTo(-w*0.4,h*0.3); c.lineTo(w*0.1,-h*0.4);
+    c.moveTo(-w*0.1,h*0.5); c.lineTo(w*0.4,-h*0.15);
     c.stroke();
-    const rnd=seeded(seed+41);
     c.fillStyle='rgba(255,255,255,.85)';
-    for(let i=0;i<5;i++){
-      const a=i/5*Math.PI*2;
-      const x=Math.cos(a)*w*0.37, y=-h*0.03+Math.sin(a)*h*0.25;
-      c.beginPath(); c.arc(x,y,w*0.02,0,Math.PI*2); c.fill();
-    }
+    c.beginPath();
+    c.moveTo(w*0.18,h*0.28); c.lineTo(w*0.32,h*0.28); c.lineTo(w*0.25,h*0.12);
+    c.closePath(); c.fill();
   }},
   wanghong:{name:'ワンホン', paint(c,w,h,col,seed){
     nudeBase(c,w,h,.85);
@@ -984,9 +977,9 @@ function buildLooks(){
 /* サムネイルは選択中の色に関係なく、デザインごとの見本カラーで塗る（一覧が単色に潰れないように） */
 const SHOWCASE = {
   onecolor:'#b3271e', churun:'#c9a227', mizuhikari:'#3f6fee', flash:'#7a1f2b',
-  chrome:'#8a8f96', skull:'#101113', chromeheart:'#8a8f96', wanghong:'#c9a227',
-  french:'#e8e6df', grad:'#3f6fee', flower:'#7a1f2b', dot:'#0f3d3a',
-  aurora:'#c9a227', milk:'#d4a017',
+  chrome:'#8a8f96', matte:'#101113', microart:'#e8e6df', geometric:'#3c3f45',
+  wanghong:'#c9a227', french:'#e8e6df', grad:'#3f6fee', flower:'#7a1f2b',
+  dot:'#0f3d3a', aurora:'#c9a227', milk:'#d4a017',
 };
 function refreshThumbs(){
   const row=$('looksRow');
