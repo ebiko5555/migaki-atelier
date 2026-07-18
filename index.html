@@ -981,6 +981,13 @@ function buildLooks(){
   });
   refreshThumbs();
 }
+/* サムネイルは選択中の色に関係なく、デザインごとの見本カラーで塗る（一覧が単色に潰れないように） */
+const SHOWCASE = {
+  onecolor:'#b3271e', churun:'#c9a227', mizuhikari:'#3f6fee', flash:'#7a1f2b',
+  chrome:'#8a8f96', skull:'#101113', chromeheart:'#8a8f96', wanghong:'#c9a227',
+  french:'#e8e6df', grad:'#3f6fee', flower:'#7a1f2b', dot:'#0f3d3a',
+  aurora:'#c9a227', milk:'#d4a017',
+};
 function refreshThumbs(){
   const row=$('looksRow');
   [...row.children].forEach(div=>{
@@ -990,7 +997,7 @@ function refreshThumbs(){
     c.translate(52,66);
     const w=88,hh=120;
     c.save();
-    paintByKey(c,key,w,hh,currentColor,Object.keys(LOOKS).indexOf(key));
+    paintByKey(c,key,w,hh,SHOWCASE[key]||currentColor,Object.keys(LOOKS).indexOf(key));
     c.globalAlpha=.35; c.fillStyle='#fff';
     c.beginPath(); c.ellipse(-w*0.18,-hh*0.2,w*0.15,hh*0.24,-0.3,0,Math.PI*2); c.fill();
     c.restore();
