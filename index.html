@@ -428,7 +428,7 @@ function makeHands(opts){
 function ensureLive(){
   if(window.__mpFailed) return Promise.reject(new Error('cdn'));
   if(!liveReady){
-    liveHands = makeHands({maxNumHands:2, modelComplexity:1, minDetectionConfidence:0.6, minTrackingConfidence:0.6});
+    liveHands = makeHands({maxNumHands:2, modelComplexity:0, minDetectionConfidence:0.6, minTrackingConfidence:0.6});
     liveHands.onResults(res => {
       const lms = res.multiHandLandmarks || [];
       if(lms.length){ lastSeenT = performance.now(); updateLandmarks(lms); }
@@ -456,7 +456,7 @@ function updateLandmarks(lms){
         if(Math.abs(d) < 0.0022){ s[v]*=0.5; return; }
         const dv = d/dt;
         s[v] += alphaFor(1.0, dt)*(dv - s[v]);
-        const cutoff = 1.0 + 25*Math.abs(s[v]);
+        const cutoff = 1.2 + 40*Math.abs(s[v]);
         s[ax] += alphaFor(cutoff, dt)*d;
       });
     });
@@ -595,9 +595,9 @@ function drawNails(){
       const rawAng = Math.atan2(ty-dy,tx-dx);
       const st = nailState[hi*5+fi] || (nailState[hi*5+fi] = {len:rawLen, ang:rawAng});
       const dLen = rawLen - st.len;
-      if(Math.abs(dLen) > st.len*0.035) st.len += dLen*Math.min(1, 0.12 + Math.abs(dLen)/st.len);
+      if(Math.abs(dLen) > st.len*0.035) st.len += dLen*Math.min(1, 0.35 + Math.abs(dLen)/st.len*1.6);
       let dAng = ((rawAng - st.ang + Math.PI*3) % (Math.PI*2)) - Math.PI;
-      if(Math.abs(dAng) > 0.035) st.ang += dAng*Math.min(1, 0.15 + Math.abs(dAng)*2);
+      if(Math.abs(dAng) > 0.035) st.ang += dAng*Math.min(1, 0.4 + Math.abs(dAng)*3);
       const len = st.len, ang = st.ang;
       const w = len*0.54*scale, h = len*0.94*scale;
       ctx.save();
