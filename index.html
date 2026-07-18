@@ -402,7 +402,7 @@ const video = document.getElementById('video');
 let mode = 'idle';            // idle | live | frozen
 let facing = 'environment';
 let stream = null;
-let currentColor = '#3f6fee';
+let currentColor = '#101113';
 let currentLook = 'onecolor';
 let smoothed = [];
 let rafOn = false;
@@ -692,14 +692,14 @@ function buildTrailSwatches(){
   const opts = [
     {label:'ネイルカラーと同じ', val:null},
     {label:'アイスシルバー', val:'#d8dce2'},
-    {label:'コバルト', val:'#3f6fee'},
-    {label:'ガンメタル', val:'#3c3f45'},
     {label:'ゴールド', val:'#c9a227'},
+    {label:'ガンメタル', val:'#3c3f45'},
+    {label:'レッド', val:'#b3271e'},
   ];
   opts.forEach(o=>{
     const el = document.createElement('div');
     el.className='swatch'+(trailHue===o.val?' active':'');
-    el.style.background = o.val || 'linear-gradient(135deg,#3f6fee,#c9a227,#d8dce2)';
+    el.style.background = o.val || 'linear-gradient(135deg,#b3271e,#c9a227,#d8dce2)';
     el.title = o.label;
     el.onclick = ()=>{
       trailHue = o.val;
@@ -791,6 +791,51 @@ const LOOKS = {
     c.fillStyle=g; c.fillRect(-w/2,-h/2,w,h*1.2);
     c.fillStyle='rgba(255,255,255,.55)';
     c.fillRect(-w*0.06,-h/2,w*0.05,h*1.2);
+  }},
+  skull:{name:'スカル', paint(c,w,h,col){
+    base(c,w,h,shade(col,-8),shade(col,-42));
+    c.fillStyle='rgba(244,242,236,.96)';
+    c.beginPath(); c.ellipse(0,-h*0.08,w*0.30,h*0.24,0,0,Math.PI*2); c.fill();
+    c.beginPath();
+    c.moveTo(-w*0.22,h*0.02);
+    c.quadraticCurveTo(0,h*0.24,w*0.22,h*0.02);
+    c.quadraticCurveTo(w*0.15,h*0.15,0,h*0.17);
+    c.quadraticCurveTo(-w*0.15,h*0.15,-w*0.22,h*0.02);
+    c.fill();
+    c.fillStyle=shade(col,-48);
+    c.beginPath(); c.ellipse(-w*0.115,-h*0.09,w*0.075,h*0.09,0,0,Math.PI*2); c.fill();
+    c.beginPath(); c.ellipse(w*0.115,-h*0.09,w*0.075,h*0.09,0,0,Math.PI*2); c.fill();
+    c.beginPath();
+    c.moveTo(0,-h*0.02); c.lineTo(-w*0.035,h*0.035); c.lineTo(w*0.035,h*0.035);
+    c.closePath(); c.fill();
+    c.strokeStyle=shade(col,-48); c.lineWidth=Math.max(1,w*0.014);
+    for(let i=-2;i<=2;i++){
+      c.beginPath(); c.moveTo(i*w*0.045,h*0.055); c.lineTo(i*w*0.045,h*0.14); c.stroke();
+    }
+  }},
+  chromeheart:{name:'クロムハート', paint(c,w,h,col,seed){
+    base(c,w,h,shade(col,-30),shade(col,-50));
+    const g=c.createLinearGradient(-w*0.3,-h*0.3,w*0.3,h*0.3);
+    g.addColorStop(0,'rgba(255,255,255,.95)');
+    g.addColorStop(.3,hexA(shade(col,100),.9));
+    g.addColorStop(.55,'rgba(222,222,228,.85)');
+    g.addColorStop(.8,hexA(shade(col,30),.9));
+    g.addColorStop(1,'rgba(255,255,255,.9)');
+    c.fillStyle=g;
+    heart(c,0,-h*0.03,w*0.34);
+    c.strokeStyle='rgba(18,18,20,.55)';
+    c.lineWidth=Math.max(1,w*0.03);
+    c.beginPath();
+    c.moveTo(0,-h*0.24); c.lineTo(0,h*0.10);
+    c.moveTo(-w*0.14,-h*0.06); c.lineTo(w*0.14,-h*0.06);
+    c.stroke();
+    const rnd=seeded(seed+41);
+    c.fillStyle='rgba(255,255,255,.85)';
+    for(let i=0;i<5;i++){
+      const a=i/5*Math.PI*2;
+      const x=Math.cos(a)*w*0.37, y=-h*0.03+Math.sin(a)*h*0.25;
+      c.beginPath(); c.arc(x,y,w*0.02,0,Math.PI*2); c.fill();
+    }
   }},
   wanghong:{name:'ワンホン', paint(c,w,h,col,seed){
     nudeBase(c,w,h,.85);
@@ -1007,12 +1052,12 @@ function edClear(){ ed.ctx.clearRect(0,0,ed.canvas.width,ed.canvas.height); }
 
 /* ================= カラー（クール＆モードな配色） ================= */
 const defaultPalette=[
-  '#3f6fee', /* コバルトブルー */  '#101113', /* ジェットブラック */
-  '#0f3d3a', /* エメラルド */     '#7a1f2b', /* ワイン */
-  '#c9a227', /* ゴールド */       '#8a8f96', /* シルバー */
-  '#1c2b4a', /* ネイビー */       '#3c3f45', /* ガンメタル */
-  '#0d5c4a', /* フォレスト */     '#b5502e', /* ラスト */
-  '#4a4e55', /* スチール */       '#e8e6df', /* アイスホワイト */
+  '#101113', /* ジェットブラック */ '#b3271e', /* レッド */
+  '#d4a017', /* マスタードイエロー */ '#3f6fee', /* コバルトブルー */
+  '#0f3d3a', /* エメラルド */      '#7a1f2b', /* ワイン */
+  '#c9a227', /* ゴールド */        '#1c2b4a', /* ネイビー */
+  '#8a8f96', /* シルバー */        '#3c3f45', /* ガンメタル */
+  '#b5502e', /* ラスト */          '#e8e6df', /* アイスホワイト */
 ];
 let currentPalette = [];
 function renderChips(pal){
