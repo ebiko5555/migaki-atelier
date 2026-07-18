@@ -326,6 +326,7 @@
     <div class="tab" data-t="colors">カラー</div>
     <div class="tab" data-t="tune">質感</div>
     <div class="tab" data-t="hikari">光</div>
+    <div class="tab" data-t="care">ケア</div>
   </div>
 
   <div class="tray active" id="tray-looks">
@@ -378,6 +379,15 @@
     <div class="swatchrow" id="trailSwatches"></div>
     <p class="hikari-desc">手を動かすたび、爪の色に呼応した光がやわらかく尾を引きます。手を止めると静かに消えていきます。</p>
   </div>
+
+  <div class="tray" id="tray-care">
+    <div class="toggle-row">
+      <span>色を塗らず地爪をきれいに見せる</span>
+      <div class="switch" id="careSwitch"></div>
+    </div>
+    <div class="minirow">補正の強さ <input type="range" id="careIntensity" min="0" max="100" value="60"></div>
+    <p class="hikari-desc">デザインやカラーは重ねず、素の爪と手の色艶を自然に引き立てます。オンの間はデザイン・カラーの選択は反映されません。</p>
+  </div>
 </div>
 
 <input type="file" id="inspoInput" accept="image/*">
@@ -417,6 +427,11 @@ let currentLook = 'onecolor';
 let smoothed = [];
 let rafOn = false;
 const tuneVals = { gloss:65, opacity:96, nailSize:100 };
+let careOn = false, careIntensity = 60;
+function careFilterString(){
+  const t = careIntensity/100;
+  return `brightness(${1+0.10*t}) saturate(${1+0.22*t}) contrast(${1+0.06*t})`;
+}
 const $ = id => document.getElementById(id);
 
 function setStatus(t){ $('status').textContent = t || ''; }
@@ -520,7 +535,9 @@ function startLoops(){
     if(mode === 'live' && video.readyState >= 2){
       ctx.save();
       if(mirrored()){ ctx.translate(canvas.width,0); ctx.scale(-1,1); }
+      ctx.filter = careOn ? careFilterString() : 'none';
       ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      ctx.filter = 'none';
       ctx.restore();
       recordTrails();
       drawTrails(dt);
@@ -619,26 +636,32 @@ function drawNails(){
       nailPath(w,h);
       ctx.clip();
       ctx.globalAlpha = alpha;
-      paintLook(ctx,w,h,currentColor,hi*5+fi);
-      if(gloss < 0.5){
-        // マット寄りの質感ほど、デザイン自体が持つツヤ由来のグラデーションも上から均して消す
-        const flat = Math.max(0, 1 - gloss*2);
-        ctx.globalAlpha = alpha*flat*0.6;
-        ctx.fillStyle = shade(currentColor,-6);
-        ctx.fillRect(-w,-h,w*2,h*2);
+      if(!careOn){
+        paintLook(ctx,w,h,currentColor,hi*5+fi);
+        if(gloss < 0.5){
+          // マット寄りの質感ほど、デザイン自体が持つツヤ由来のグラデーションも上から均して消す
+          const flat = Math.max(0, 1 - gloss*2);
+          ctx.globalAlpha = alpha*flat*0.6;
+          ctx.fillStyle = shade(currentColor,-6);
+          ctx.fillRect(-w,-h,w*2,h*2);
+        }
       }
-      ctx.globalAlpha = alpha*0.3;
+      // ケア中は色を塗らず、映像側の補正(careFilterString)で実際の爪の色艶を活かす。
+      // ここではツヤの見せ方(ハイライト・縁の陰影)だけを重ねる。
+      const careT = careIntensity/100;
+      ctx.globalAlpha = (careOn ? careT : alpha) * 0.3;
       const rim = ctx.createRadialGradient(0,0,Math.min(w,h)*0.35, 0,0,Math.max(w,h)*0.75);
       rim.addColorStop(0,'rgba(0,0,0,0)');
-      rim.addColorStop(1,'rgba(30,30,28,.5)');
+      rim.addColorStop(1, careOn ? 'rgba(20,18,16,.35)' : 'rgba(30,30,28,.5)');
       ctx.fillStyle=rim; ctx.fillRect(-w,-h,w*2,h*2);
-      if(gloss>0.05){
-        ctx.globalAlpha = alpha*gloss*0.6;
+      const glossEff = careOn ? careT : gloss;
+      if(glossEff>0.05){
+        ctx.globalAlpha = (careOn ? careT : alpha) * glossEff*0.6;
         ctx.fillStyle='#fff';
         ctx.beginPath();
         ctx.ellipse(-w*0.18,-h*0.20,w*0.15,h*0.26,-0.3,0,Math.PI*2);
         ctx.fill();
-        ctx.globalAlpha = alpha*gloss*0.28;
+        ctx.globalAlpha = (careOn ? careT : alpha) * glossEff*0.28;
         ctx.beginPath();
         ctx.ellipse(w*0.2,h*0.05,w*0.09,h*0.15,0.2,0,Math.PI*2);
         ctx.fill();
@@ -735,6 +758,13 @@ $('trailSwitch').onclick = ()=>{
   if(!trailOn) trails.length = 0;
 };
 $('trailIntensity').addEventListener('input', e=>{ trailIntensity = +e.target.value; });
+
+/* ================= ケア（色を塗らず地爪・肌の色艶を補正） ================= */
+$('careSwitch').onclick = ()=>{
+  careOn = !careOn;
+  $('careSwitch').classList.toggle('on', careOn);
+};
+$('careIntensity').addEventListener('input', e=>{ careIntensity = +e.target.value; });
 
 /* ================= デザイン12種 ================= */
 function seeded(seed){ let s=seed*9301+49297; return ()=>{ s=(s*9301+49297)%233280; return s/233280; }; }
